@@ -4,11 +4,14 @@ from filter import Filter
 import tensorflow as tf
 from datetime import datetime
 import numpy as np
+from PIL import Image
+from scipy import misc
 import base64
 import json
 import cv2
 import time
 import os
+import io
 
 
 class TransferServer:
@@ -21,30 +24,11 @@ class TransferServer:
 
     def get_image_and_filter(self):
         time_ = time.time()
-        # json_data = request.get_data().decode("utf-8")
-        json_data = request.get_data()
-        print("1", time.time() - time_)
-        time_ = time.time()
+        file = request.files['file']
+        upload_id = int(request.form['upload_id'])
+        image = misc.imread(file)
+        print("Upload file using time:", time.time() - time_)
 
-        dict_data = json.loads(json_data)
-        print("2", time.time() - time_)
-        time_ = time.time()
-
-        image_base64 = dict_data['image_base64']
-        image = base64.b64decode(image_base64)
-        print("3", time.time() - time_)
-        time_ = time.time()
-
-        image = np.fromstring(image, np.uint8)
-
-        print("4", time.time() - time_)
-        time_ = time.time()
-
-        image = cv2.imdecode(image, cv2.IMREAD_COLOR)
-        print("5", time.time() - time_)
-        time_ = time.time()
-
-        upload_id = int(dict_data['upload_id'])
         return image, upload_id
 
     def transfer(self):
