@@ -1,77 +1,87 @@
-from flask import Response, Flask,send_from_directory
-from flask import render_template, jsonify, request
+from flask import Flask, send_from_directory
+from flask import request
 from filter import Filter
-from datetime import datetime
-from utils import get_host_ip
 import tensorflow as tf
+from datetime import datetime
 import numpy as np
 import base64
 import json
 import cv2
-import model
 import time
-import reader
+import os
 
 
-class TransferServer():
+class TransferServer:
     def __init__(self):
-        self.filters = {'oil_painting': Filter(name='oil_painting'),
-                        'golden_time': Filter(name='golden_time'),
-                        'ocean_heart': Filter(name='ocean_heart'),
-                        'nature': Filter(name='nature'),
-                        'old_photo': Filter(name='old_photo'),
-                        'engraving_art': Filter(name='engraving_art'),
-                        'feathers': Filter(name='feathers'),
-                        'wave': Filter(name='wave'),
-                        'starry_night': Filter(name='starry_night'),
-                        'cubist': Filter(name='cubist'),
-                        'mosaic': Filter(name='mosaic')}
-        self.upload_path = "./upload/"
+        pb_files = os.listdir("models/")  # 获取所有滤镜的文件名
+        self.filters = {}
+        for filename in pb_files:
+            self.filters[int(filename.split(".pb")[0])] = Filter(name=filename)  # 载入所有滤镜
+            print("滤镜%s载入成功" % filename)
 
     def get_image_and_filter(self):
-        if request.method=='POST':
-            json_data = request.get_data().decode("utf-8")
-            dict_data = json.loads(json_data)
-            image_base64 = dict_data['image_base64']
-            image = base64.b64decode(image_base64)
-            image = np.fromstring(image, np.uint8)
-            image_upload = cv2.imdecode(image, cv2.IMREAD_COLOR)
-            filter_name = dict_data['filter_name']
-            image_name = filter_name+"_"+datetime.now().strftime("%Y%m%d_%H%M%S")+".jpg"
-            cv2.imwrite(self.upload_path+image_name, image_upload)
-            return image_name,filter_name
+        time_ = time.time()
+        # json_data = request.get_data().decode("utf-8")
+        json_data = request.get_data()
+        print("1", time.time() - time_)
+        time_ = time.time()
+
+        dict_data = json.loads(json_data)
+        print("2", time.time() - time_)
+        time_ = time.time()
+
+        image_base64 = dict_data['image_base64']
+        image = base64.b64decode(image_base64)
+        print("3", time.time() - time_)
+        time_ = time.time()
+
+        image = np.fromstring(image, np.uint8)
+
+        print("4", time.time() - time_)
+        time_ = time.time()
+
+        image = cv2.imdecode(image, cv2.IMREAD_COLOR)
+        print("5", time.time() - time_)
+        time_ = time.time()
+
+        upload_id = int(dict_data['upload_id'])
+        return image, upload_id
 
     def transfer(self):
-        image_name, filter_name = self.get_image_and_filter()
-        tf.logging.info("Load data completed.")
-        image_save_path = self.filters[filter_name].style_transfer(image_name)
+        time_ = time.time()
+        image, upload_id = self.get_image_and_filter()
+        tf.logging.info("Load data completed, using time:%.3f" % (time.time()-time_))
+        time_ = time.time()
+        image = self.filters[upload_id].style_transfer(image)
+        tf.logging.info("Transfer image completed, using time:%.3f" % (time.time()-time_))
+        time_ = time.time()
+        path = "images/" + str(upload_id) + "_" + datetime.now().strftime("%Y%m%d_%H%M%S") + ".jpg"
+        cv2.imwrite(path, image)
+        tf.logging.info("IO, using time:%.3f" % (time.time()-time_))
         tf.logging.info("Image style transfer completed.")
-        return image_save_path
-
+        return path
 
 
 app = Flask(__name__)
-transfer_server = TransferServer()
 
-@app.route("/api",methods=['POST'])
+
+@app.route("/api/transfer", methods=['POST'])
 def index():
-    time1 = time.time()
     image_path = transfer_server.transfer()
-    time2 = time.time()
-    tf.logging.info("Using time: %.3fs"%(time2-time1))
     image_json = {
-        'download_path':"http://120.79.162.134:80/"+image_path[2:]
+        'image': "http://art.deepicecream.com:7004" + image_path
     }
-    print(image_json['download_path'])
     return json.dumps(image_json)
-    # return image_json['download_path']
 
-@app.route('/save/<filename>', methods=['GET'])
+
+@app.route('/images/<filename>', methods=['GET'])
 def download(filename):
-    return send_from_directory('save',filename, as_attachment=True)
+    return send_from_directory('images', filename, as_attachment=True)
 
 
 if __name__ == '__main__':
+    deviceId = input("please input device id (0-3): ")
+    os.environ["CUDA_VISIBLE_DEVICES"] = deviceId
     tf.logging.set_verbosity(tf.logging.INFO)
-    app.run(host='0.0.0.0', port=80, threaded=True)
-
+    transfer_server = TransferServer()
+    app.run(host='0.0.0.0', port=7004, threaded=True)
