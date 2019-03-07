@@ -41,7 +41,7 @@ class TransferServer:
         tf.logging.info("Transfer image completed, using time:%.3f" % (time.time()-time_))
         time_ = time.time()
         path = "images/" + str(upload_id) + "_" + datetime.now().strftime("%Y%m%d_%H%M%S") + ".jpg"
-        cv2.imwrite(path, image)
+        cv2.imwrite(path, image[..., ::-1])
         tf.logging.info("IO, using time:%.3f" % (time.time()-time_))
         tf.logging.info("Image style transfer completed.")
         return path
