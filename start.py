@@ -1,6 +1,6 @@
 from flask import Flask, send_from_directory
 from flask import request
-from flask_cors import *
+from flask_cors import CORS
 from filter import Filter
 import tensorflow as tf
 from datetime import datetime
@@ -27,7 +27,7 @@ class TransferServer:
         time_ = time.time()
         file = request.files['file']
         upload_id = int(request.form['upload_id'])
-        image = misc.imread(file)
+        image = misc.imread(file)[..., 0:3]
         print("Upload file using time:", time.time() - time_)
 
         return image, upload_id
@@ -48,8 +48,8 @@ class TransferServer:
 
 
 app = Flask(__name__)
+CORS(app, supports_credentials=True)
 
-@cross_origin()
 @app.route("/api/transfer", methods=['POST'])
 def index():
     image_path = transfer_server.transfer()
