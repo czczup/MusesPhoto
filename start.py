@@ -1,5 +1,6 @@
 from flask import Flask, send_from_directory
 from flask import request
+from flask_cors import *
 from filter import Filter
 import tensorflow as tf
 from datetime import datetime
@@ -48,13 +49,14 @@ class TransferServer:
 
 app = Flask(__name__)
 
-
+@cross_origin()
 @app.route("/api/transfer", methods=['POST'])
 def index():
     image_path = transfer_server.transfer()
     image_json = {
-        'image': "http://art.deepicecream.com:7004" + image_path
+        'image': "http://art.deepicecream.com:7004/" + image_path
     }
+    print(image_json['image'])
     return json.dumps(image_json)
 
 
