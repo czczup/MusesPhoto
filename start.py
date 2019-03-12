@@ -1,18 +1,14 @@
 from flask import Flask, send_from_directory
-from flask import request
+from flask import request, Response
 from flask_cors import CORS
 from filter import Filter
 import tensorflow as tf
 from datetime import datetime
-import numpy as np
-from PIL import Image
 from scipy import misc
-import base64
 import json
 import cv2
 import time
 import os
-import io
 
 
 class TransferServer:
@@ -24,12 +20,9 @@ class TransferServer:
             print("滤镜%s载入成功" % filename)
 
     def get_image_and_filter(self):
-        time_ = time.time()
         file = request.files['file']
         upload_id = int(request.form['upload_id'])
-        image = misc.imread(file)[..., 0:3]
-        print("Upload file using time:", time.time() - time_)
-
+        image = misc.imread(file)[..., 0:3] # 若图像通道数多于3，则取前三通道
         return image, upload_id
 
     def transfer(self):
@@ -41,7 +34,7 @@ class TransferServer:
         tf.logging.info("Transfer image completed, using time:%.3f" % (time.time()-time_))
         time_ = time.time()
         path = "images/" + str(upload_id) + "_" + datetime.now().strftime("%Y%m%d_%H%M%S") + ".jpg"
-        cv2.imwrite(path, image[..., ::-1])
+        cv2.imwrite(path, image[..., ::-1]) # BGR转RGB
         tf.logging.info("IO, using time:%.3f" % (time.time()-time_))
         tf.logging.info("Image style transfer completed.")
         return path
@@ -58,6 +51,14 @@ def index():
     }
     print(image_json['image'])
     return json.dumps(image_json)
+
+
+@app.route("/api/addFilter/<filter_id>", methods=['POST'])
+def add_filter(filter_id):
+    filter_id = int(filter_id)
+    transfer_server.filters[filter_id] = Filter(name=str(filter_id)+".pb")  # 载入所有滤镜
+    print("添加新滤镜成功，滤镜id为%d" % filter_id)
+    return Response(response='success', status=200, content_type='text/html;charset=utf8')
 
 
 @app.route('/images/<filename>', methods=['GET'])
