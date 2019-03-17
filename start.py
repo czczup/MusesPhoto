@@ -5,6 +5,7 @@ from filter import Filter
 import tensorflow as tf
 from datetime import datetime
 from scipy import misc
+import requests
 import json
 import cv2
 import time
@@ -49,6 +50,7 @@ def index():
     image_json = {
         'image': "http://art.deepicecream.com:7004/" + image_path
     }
+    requests.get("http://muses.deepicecream.com:7010/api/filter/use/"+request.form['upload_id'])
     print(image_json['image'])
     return json.dumps(image_json)
 
