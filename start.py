@@ -10,6 +10,7 @@ import json
 import cv2
 import time
 import os
+import skimage
 
 
 class TransferServer:
@@ -24,6 +25,7 @@ class TransferServer:
         file = request.files['file']
         upload_id = int(request.form['upload_id'])
         image = misc.imread(file)[..., 0:3] # 若图像通道数多于3，则取前三通道
+        # image = skimage.util.random_noise(image, mode='gaussian', seed=None, clip=True, var=(20/255.0)**2)
         return image, upload_id
 
     def transfer(self):
