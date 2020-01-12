@@ -82,96 +82,75 @@ def unpadding(image, padding):
     return image
 
 
-def optimize_seam(image_list, part, seam, padding):
-    image_list = [image_list[i:i+part] for i in range(0, len(image_list), part)]
-    width, height = [item-2*seam for item in image_list[0][0].size]
-    width_padding, height_padding = image_list[0][0].size
-    # print("图像的像素为: ", width*part, "*", width*part)
-    target = Image.new('RGB', (width*part+2*seam, width*part+2*seam))
-    len_i = len(image_list)
-    len_j = len(image_list[0])
-    for i, row in enumerate(image_list):
-        for j, item in enumerate(row):
-            a = j*width+2*seam  # 图片距离左边的大小
-            b = i*width+2*seam  # 图片距离上边的大小
-            c = a+width-2*seam  # 图片距离左边的大小 + 图片自身宽度
-            d = b+width-2*seam  # 图片距离上边的大小 + 图片自身高度
-            # print((a,b,c,d))
-            image_unpadding = unpadding(item, padding=2*seam)
-            # print(image_unpadding.size)
-            target.paste(image_unpadding, (a, b, c, d))
-
-            start_x = a-2*seam
-            end_x = a
-            start_y = b-2*seam
-            end_y = d+2*seam
-            if j != 0:
-                for x in range(start_x, end_x):
-                    for y in range(start_y, end_y):
-                        alpha = (2*seam-(x-start_x))/(2*seam)
-                        pixel1 = image_list[i][j-1].getpixel(((width_padding-2*seam-1)+(x-start_x), y-start_y))
-                        pixel2 = image_list[i][j].getpixel((x-start_x, y-start_y))
+def optimize_seam_row(row, seam):
+    width, height = [item-2*seam for item in row[0].size]
+    part = len(row)
+    target = Image.new('RGB', (width*part+2*seam, height+2*seam))
+    for index, item in enumerate(row):
+        if index == 0:
+            target.paste(row[index], (0, 0, width+2*seam, height+2*seam))
+        else:
+            start_x = index*seam
+            end_x = start_x+width+seam
+            image = row[index]
+            for x in range(start_x, end_x):
+                for y in range(0, height+2*seam):
+                    move_x = x-start_x
+                    pixel1 = image.getpixel((move_x, y))
+                    if x < x + 2*seam:
+                        pixel2 = target.getpixel((x, y))
+                        alpha = move_x / (2*seam)
                         pixel_add = tuple([int(pixel1[i]*alpha+pixel2[i]*(1-alpha)) for i in range(3)])
-                        pixel_already = target.getpixel((x, y))
-                        if i == 0: # 若为第一行
-                            target.putpixel((x, y), pixel_add)
-                        else: # 若为其他行
-                            if (y - start_y) < 2*seam:
-                                alpha = (y-start_y) / (2*seam)
-                                pixel_add = tuple([int(pixel_add[i]*alpha+pixel_already[i]*(1-alpha)) for i in range(3)])
-                            target.putpixel((x, y), pixel_add)
-            else:
-                for x in range(start_x, end_x):
-                    for y in range(start_y, end_y):
-                        pixel = image_list[i][j].getpixel((x-start_x, y-start_y))
-                        target.putpixel((x, y), pixel)
-
-
-            start_x = a-2*seam
-            end_x = c+2*seam
-            start_y = b-2*seam
-            end_y = b
-            if i != 0:
-                for y in range(start_y, end_y):
-                    for x in range(start_x, end_x):
-                        alpha = (y-start_y)/(2*seam)
-                        pixel1 = image_list[i-1][j].getpixel(
-                            (x-start_x, (width_padding-2*seam-1)+(y-start_y)))
-                        pixel2 = image_list[i][j].getpixel((x-start_x, y-start_y))
-                        pixel_add = tuple([int(pixel2[i]*alpha+pixel1[i]*(1-alpha)) for i in range(3)])
-                        # 左侧融合
-                        if x - start_x < 2 * seam:
-                            alpha = (x-start_x) / (2*seam)
-                            pixel_already = target.getpixel((x, y))
-                            pixel_add = tuple([int(pixel_add[i]*alpha+pixel_already[i]*(1-alpha)) for i in range(3)])
-                        # 右侧融合
-                        elif x - start_x > width:
-                            alpha = (x-start_x - width) / (2*seam)
-                            pixel_already = target.getpixel((x, y))
-                            pixel_add = tuple([int(pixel_already[i]*alpha+pixel_add[i]*(1-alpha)) for i in range(3)])
                         target.putpixel((x, y), pixel_add)
-            else:
-                for y in range(start_y, end_y):
-                    for x in range(start_x, end_x):
-                        pixel = image_list[i][j].getpixel((x-start_x, y-start_y))
-                        target.putpixel((x, y), pixel)
-        sys.stdout.write('\r>> 合并图像 %d/%d'%(i+1, len_i))
-        sys.stdout.flush()
-        print()
-
+            image = image.crop((width+seam, 0, width+2*seam, height+2*seam))
+            target.paste(image, (end_x, 0, end_x+seam, height+2*seam))
     return target
+
+
+def optimize_seam_col(image_row_list, seam):
+    width, height = [item-2*seam for item in image_row_list[0].size]
+    part = len(image_row_list)
+    target = Image.new('RGB', (width+2*seam, height*part+2*seam))
+    for index, row in enumerate(image_row_list):
+        if index == 0:
+            target.paste(image_row_list[index], (0, 0, width+2*seam, height+2*seam))
+        else:
+            start_y = index*seam
+            end_y = start_y+height+seam
+            image = image_row_list[index]
+            for x in range(0, width+2*seam):
+                for y in range(start_y, end_y):
+                    move_y = y-start_y
+                    pixel1 = image.getpixel((x, move_y))
+                    if y < y+2*seam:
+                        pixel2 = target.getpixel((x, y))
+                        alpha = move_y/(2*seam)
+                        pixel_add = tuple([int(pixel1[i]*alpha+pixel2[i]*(1-alpha)) for i in range(3)])
+                        target.putpixel((x, y), pixel_add)
+            image = image.crop((0, height+seam, width+2*seam, height+2*seam))
+            target.paste(image, (0, end_y, width+2*seam, end_y+seam))
+    return target
+
+
+def optimize_seam(image_list, part, seam):
+    image_list = [image_list[i:i+part] for i in range(0, len(image_list), part)]
+    image_row_list = []
+    for i, row in enumerate(image_list):
+        generated = optimize_seam_row(row, seam) # 合并行
+        image_row_list.append(generated)
+    generated = optimize_seam_col(image_row_list, seam)
+    return generated
 
 
 if __name__=='__main__':
     style_model = '139.pb'
     filter = f.Filter(name=style_model)
     part = 30
-    size = 3000 / part
-    big_cut = 6
-    # pad = 30
-    # seam = 15
-    pad = 59
-    seam = 49
+    width = int(3000 / part)
+    big_cut = 10
+    seam = width
+    pad = seam+15
+
     image_list = [
         # 'test1.jpg',
         # 'test2.jpg',
@@ -182,8 +161,6 @@ if __name__=='__main__':
 
     for idx, filename in enumerate(image_list):
         image = Image.open(filename)
-        image_name = filename.split('.')[0].split('/')[-1]
-        model_name = style_model.split('.')[0].split('/')[-1]
         image = fill_image(image)
         image = padding(image, padding=pad)
         print('1.1：切块')
@@ -222,7 +199,7 @@ if __name__=='__main__':
         item_list = sorted(item_list, key=lambda item: item.id)
         image_list = [item.image for item in item_list]
         print("3.3：合并图像")
-        image = optimize_seam(image_list, part=part, seam=seam, padding=pad)
-        image = unpadding(image, padding=2*pad)
+        image = optimize_seam(image_list, part=part, seam=seam)
+        image = unpadding(image, padding=pad)
         print('开始保存图片')
         image.save("shuffle.jpg")

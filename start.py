@@ -25,6 +25,7 @@ class TransferServer:
         file = request.files['file']
         upload_id = int(request.form['upload_id'])
         image = misc.imread(file)[..., 0:3] # 若图像通道数多于3，则取前三通道
+        print(image.shape)
         # image = skimage.util.random_noise(image, mode='gaussian', seed=None, clip=True, var=(20/255.0)**2)
         return image, upload_id
 
@@ -52,7 +53,7 @@ def index():
     image_json = {
         'image': "http://art.deepicecream.com:7004/" + image_path
     }
-    requests.get("http://muses.deepicecream.com:7010/api/filter/use/"+request.form['upload_id'])
+    # requests.get("http://muses.deepicecream.com:7010/api/filter/use/"+request.form['upload_id'])
     print(image_json['image'])
     return json.dumps(image_json)
 
