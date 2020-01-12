@@ -54,6 +54,7 @@ CORS(app, supports_credentials=True)
 
 @app.route("/api/transfer", methods=['POST'])
 def index():
+    """ 风格迁移API """
     image_path = transfer_server.transfer()
     image_json = {
         'image': "http://art.deepicecream.com:7004/" + image_path
@@ -66,6 +67,7 @@ def index():
 
 @app.route("/api/addFilter/<filter_id>", methods=['POST'])
 def add_filter(filter_id):
+    """ 添加滤镜API """
     filter_id = int(filter_id)
     transfer_server.filters[filter_id] = Filter(name=str(filter_id)+".pb")  # 载入所有滤镜
     print("添加新滤镜成功，滤镜id为%d" % filter_id)
@@ -74,6 +76,7 @@ def add_filter(filter_id):
 
 @app.route('/images/<filename>', methods=['GET'])
 def download(filename):
+    """ 下载图像API """
     return send_from_directory('images', filename, as_attachment=True)
 
 
