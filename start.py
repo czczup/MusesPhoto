@@ -5,12 +5,13 @@ from filter import Filter
 import tensorflow as tf
 from datetime import datetime
 from scipy import misc
+from PIL import Image
+import numpy as np
 import requests
 import json
 import cv2
 import time
 import os
-import skimage
 
 
 class TransferServer:
@@ -19,14 +20,18 @@ class TransferServer:
         self.filters = {}
         for filename in pb_files:
             self.filters[int(filename.split(".pb")[0])] = Filter(name=filename)  # 载入所有滤镜
-            print("滤镜%s载入成功" % filename)
 
     def get_image_and_filter(self):
         file = request.files['file']
         upload_id = int(request.form['upload_id'])
         image = misc.imread(file)[..., 0:3] # 若图像通道数多于3，则取前三通道
-        print(image.shape)
-        # image = skimage.util.random_noise(image, mode='gaussian', seed=None, clip=True, var=(20/255.0)**2)
+        image = Image.fromarray(image)
+        width, height = image.size
+        multiplier = ((width*height)/(1024**2))**0.5 # 图书的缩放系数
+        if multiplier > 1: # 对图像进行缩放
+            image.resize((int(width/multiplier), int(height/multiplier)))
+        image = np.array(image)
+        tf.logging.info("Image size: (%d, %d)" % (image.shape[0],image.shape[1]))
         return image, upload_id
 
     def transfer(self):
@@ -53,6 +58,7 @@ def index():
     image_json = {
         'image': "http://art.deepicecream.com:7004/" + image_path
     }
+    # 统计滤镜使用次数
     # requests.get("http://muses.deepicecream.com:7010/api/filter/use/"+request.form['upload_id'])
     print(image_json['image'])
     return json.dumps(image_json)
@@ -77,3 +83,4 @@ if __name__ == '__main__':
     tf.logging.set_verbosity(tf.logging.INFO)
     transfer_server = TransferServer()
     app.run(host='0.0.0.0', port=7004, threaded=True)
+    # 端口为7004

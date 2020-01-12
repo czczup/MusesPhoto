@@ -1,8 +1,5 @@
 import requests
-import base64
-import json
 import time
-import os
 
 time1 = time.time()
 files = {'file': ('test2.jpg', open('test/test5.jpg', 'rb'), 'image/jpg')}

@@ -1,6 +1,5 @@
 import tensorflow as tf
 import os
-import time
 
 class Filter:
     def __init__(self, name=None):
@@ -24,10 +23,8 @@ class Filter:
                     graph_def = tf.GraphDef()
                     graph_def.ParseFromString(f.read())
                     tf.import_graph_def(graph_def, name='')
-                    self.input = self.graph.get_tensor_by_name("input:0")
-                    self.output = self.graph.get_tensor_by_name("Squeeze:0")
-                    # for op in self.graph.get_operations():
-                    #     print(op.name)
+                    self.input = self.graph.get_tensor_by_name("input:0") # 输入结点
+                    self.output = self.graph.get_tensor_by_name("Squeeze:0") # 输出结点
 
     def style_transfer(self, image):
         sess = self.sess
