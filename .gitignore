@@ -100,3 +100,6 @@ out/
 # gitignore
 .gitignore
 
+.jpg
+
+*.jpg

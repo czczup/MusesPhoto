@@ -1,13 +1,13 @@
 from flask import Flask, send_from_directory
 from flask import request, Response
 from flask_cors import CORS
+from flask import request
 from filter import Filter
 import tensorflow as tf
 from datetime import datetime
 from scipy import misc
 from PIL import Image
 import numpy as np
-import requests
 import json
 import cv2
 import time
@@ -29,7 +29,7 @@ class TransferServer:
         width, height = image.size
         multiplier = ((width*height)/(1024**2))**0.5 # 图书的缩放系数
         if multiplier > 1: # 对图像进行缩放
-            image.resize((int(width/multiplier), int(height/multiplier)))
+            image = image.resize((int(width/multiplier), int(height/multiplier)))
         image = np.array(image)
         tf.logging.info("Image size: (%d, %d)" % (image.shape[0],image.shape[1]))
         return image, upload_id
@@ -57,7 +57,7 @@ def index():
     """ 风格迁移API """
     image_path = transfer_server.transfer()
     image_json = {
-        'image': "http://art.deepicecream.com:7004/" + image_path
+        'image': "http://gpu.vanxnf.top:10004/" + image_path
     }
     # 统计滤镜使用次数
     # requests.get("http://muses.deepicecream.com:7010/api/filter/use/"+request.form['upload_id'])
@@ -78,6 +78,24 @@ def add_filter(filter_id):
 def download(filename):
     """ 下载图像API """
     return send_from_directory('images', filename, as_attachment=True)
+
+
+@app.route('/download/<file>', methods=['GET'])
+def download_page(file):
+    html = "<html><img src=http://art.deepicecream.com:7004/images/"+file+".jpg style='width:100%' ></html>"
+    return html
+
+@app.route('/api/upload', methods=['POST'])
+def upload_file():
+    f = request.files['file']
+    upload_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+    f.save("images/"+upload_time+".jpg")
+    image_json = {
+        'image': "http://art.deepicecream.com:7004/download/"+upload_time
+    }
+    print(image_json['image'])
+    return json.dumps(image_json)
+
 
 
 if __name__ == '__main__':

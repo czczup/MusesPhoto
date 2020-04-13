@@ -1,4 +1,5 @@
-MusesPhoto部署指南
+# MusesPhoto部署指南
+
 ## 1 部署环境
 ```sh
 conda install python=3.6
